@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="icon" type="image/png" href="favicon.png">
+<title>UNO PRO</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;user-select:none}
+  body{font-family:'Arial Rounded MT Bold',sans-serif;background:radial-gradient(circle,#0d5c2e,#064020);height:100vh;overflow:hidden;color:#fff}
+
+  #game{width:100%;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:20px}
+
+  /* TOP - AI */
+  #aiArea{text-align:center;width:100%}
+  #aiHand{display:flex;justify-content:center;gap:-15px;margin-bottom:10px}
+  #aiInfo{font-size:18px;font-weight:bold;text-shadow:2px 2px 4px #000}
+  #aiInfo.uno{color:#ff0;animation:blink 0.5s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+  /* MIDDLE - TABLE */
+  #table{display:flex;align-items:center;gap:40px;justify-content:center}
+  #deck,#discard{width:80px;height:120px;border-radius:8px;position:relative;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.5)}
+  #deck{background:linear-gradient(135deg,#1a1a1a,#000);border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:40px;transform:rotate(-5deg)}
+  #deck:hover{transform:rotate(-5deg) scale(1.05)}
+  #deckCount{position:absolute;bottom:-25px;width:100%;text-align:center;font-size:14px;text-shadow:1px 1px 2px #000}
+  #discard{background:#fff;display:flex;align-items:center;justify-content:center;transform:rotate(5deg)}
+  #currentColor{width:50px;height:50px;border-radius:50%;border:4px solid #fff;margin:0 20px;box-shadow:0 0 20px currentColor}
+  #turnIndicator{position:absolute;font-size:24px;font-weight:bold;text-shadow:2px 2px 4px #000;background:rgba(0,0,0,0.7);padding:10px 20px;border-radius:20px}
+
+  /* BOTTOM - PLAYER */
+  #playerArea{text-align:center;width:100%}
+  #playerHand{display:flex;justify-content:center;gap:5px;margin-top:10px;min-height:130px;flex-wrap:wrap;max-width:90vw}
+  #playerInfo{font-size:18px;font-weight:bold;margin-bottom:10px;text-shadow:2px 2px 4px #000}
+  #playerInfo.uno{color:#ff0;animation:blink 0.5s infinite}
+
+  /* CARD */
+ .card{width:70px;height:105px;border-radius:8px;background:#fff;border:2px solid #000;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:bold;cursor:pointer;transition:all 0.2s;position:relative;box-shadow:0 2px 4px rgba(0,0,0,0.3)}
+ .card:hover{transform:translateY(-20px) scale(1.1);z-index:10}
+ .card.playable{box-shadow:0 0 15px #0f0,0 2px 4px rgba(0,0,0,0.3)}
+ .card.back{background:linear-gradient(135deg,#1a1a1a,#000);border:3px solid #fff;color:#fff;font-size:30px}
+ .card.red{background:#ff5555;color:#fff}
+ .card.blue{background:#5555ff;color:#fff}
+ .card.green{background:#55aa55;color:#fff}
+ .card.yellow{background:#ffaa00;color:#fff}
+ .card.wild{background:linear-gradient(135deg,#ff5555,#5555ff,#55aa55,#ffaa00);color:#fff}
+ .cardNum{font-size:32px;text-shadow:2px 2px 0 #000}
+ .cardIcon{font-size:24px;position:absolute}
+ .cardIcon.tl{top:5px;left:5px;font-size:14px}
+ .cardIcon.br{bottom:5px;right:5px;font-size:14px;transform:rotate(180deg)}
+
+  /* UI */
+  #startScreen{position:fixed;inset:0;background:rgba(0,0,0,0.9);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999}
+  #startScreen h1{font-size:60px;margin-bottom:20px;text-shadow:0 0 20px #f00}
+ .diffBtn{padding:15px 40px;margin:10px;font-size:20px;border:3px solid #fff;background:transparent;color:#fff;cursor:pointer;border-radius:10px;transition:0.3s}
+ .diffBtn:hover{background:#fff;color:#000;transform:scale(1.1)}
+  #msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:40px;font-weight:bold;text-shadow:3px 3px 6px #000;background:rgba(0,0,0,0.8);padding:20px 40px;border-radius:15px;display:none;z-index:100}
+  #colorPicker{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.9);padding:30px;border-radius:15px;display:none;z-index:200;text-align:center}
+  #colorPicker h2{margin-bottom:20px}
+ .colorBtn{width:80px;height:80px;margin:10px;border:4px solid #fff;border-radius:50%;cursor:pointer;display:inline-block;transition:0.3s}
+ .colorBtn:hover{transform:scale(1.2)}
+  #unoBtn{position:fixed;bottom:160px;right:30px;padding:15px 30px;font-size:24px;background:#f00;color:#fff;border:4px solid #fff;border-radius:15px;cursor:pointer;display:none;font-weight:bold;animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+  #scoreBoard{position:fixed;top:20px;left:20px;background:rgba(0,0,0,0.7);padding:15px;border-radius:10px;font-size:14px}
+</style>
+</head>
+<body>
+
+<div id="startScreen">
+  <h1>🎴 UNO PRO 🎴</h1>
+  <p style="margin-bottom:30px;font-size:18px">Pilih Difficulty AI:</p>
+  <button class="diffBtn" onclick="startGame('easy')">😴 Gampang</button>
+  <button class="diffBtn" onclick="startGame('normal')">🤔 Normal</button>
+  <button class="diffBtn" onclick="startGame('hard')">😈 Susah</button>
+</div>
+
+<div id="game">
+  <div id="scoreBoard">
+    <div>🏆 Win: <span id="wins">0</span></div>
+    <div>💀 Lose: <span id="losses">0</span></div>
+  </div>
+
+  <div id="aiArea">
+    <div id="aiInfo">AI: 7 kartu</div>
+    <div id="aiHand"></div>
+  </div>
+
+  <div id="table">
+    <div id="deck" onclick="drawCard()">🂠<div id="deckCount">108</div></div>
+    <div id="currentColor"></div>
+    <div id="discard"></div>
+  </div>
+
+  <div id="turnIndicator">Giliran Lu</div>
+
+  <div id="playerArea">
+    <div id="playerInfo">Lu: 7 kartu</div>
+    <div id="playerHand"></div>
+  </div>
+</div>
+
+<button id="unoBtn" onclick="callUNO()">UNO!</button>
+
+<div id="msg"></div>
+
+<div id="colorPicker">
+  <h2>Pilih Warna:</h2>
+  <div class="colorBtn" style="background:#ff5555" onclick="chooseColor('red')"></div>
+  <div class="colorBtn" style="background:#5555ff" onclick="chooseColor('blue')"></div>
+  <div class="colorBtn" style="background:#55aa55" onclick="chooseColor('green')"></div>
+  <div class="colorBtn" style="background:#ffaa00" onclick="chooseColor('yellow')"></div>
+</div>
+
+
+<script>
+
+
+// GAME STATE
+let deck=[],discard=[],playerHand=[],aiHand=[];
+let currentColor='',currentValue='',turn='player',direction=1;
+let difficulty='normal',gameOver=false,aiUno=false,playerUno=false;
+let wins=0,losses=0,pendingWild=false;
+
+// SOUNDS
+const sfx={click:()=>playTone(800,0.05),draw:()=>playTone(400,0.1),play:()=>playTone(600,0.1),uno:()=>{playTone(1000,0.1);setTimeout(()=>playTone(1200,0.1),100)},win:()=>{playTone(523,0.2);setTimeout(()=>playTone(659,0.2),200);setTimeout(()=>playTone(784,0.3),400)}};
+function playTone(f,d){try{let ctx=new AudioContext(),o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=f;g.gain.setValueAtTime(0.1,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+d);o.start();o.stop(ctx.currentTime+d)}catch(e){}}
+
+// CARD GENERATION
+function createDeck(){
+  deck=[];const colors=['red','blue','green','yellow'],values=['0','1','2','3','4','5','6','7','8','9','skip','reverse','+2'];
+  colors.forEach(c=>{values.forEach(v=>{deck.push({color:c,value:v});if(v!=='0')deck.push({color:c,value:v})})});
+  for(let i=0;i<4;i++){deck.push({color:'wild',value:'wild'});deck.push({color:'wild',value:'+4'})}
+  shuffle(deck);
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}}
+
+function startGame(diff){
+  difficulty=diff;gameOver=false;
+  document.getElementById('startScreen').style.display='none';
+  createDeck();playerHand=[];aiHand=[];discard=[];
+  for(let i=0;i<7;i++){playerHand.push(deck.pop());aiHand.push(deck.pop())}
+  let first=deck.pop();while(first.color==='wild'){deck.unshift(first);shuffle(deck);first=deck.pop()}
+  discard.push(first);currentColor=first.color;currentValue=first.value;
+  turn='player';updateUI();sfx.draw();
+}
+
+function updateUI(){
+  // Player hand
+  const ph=document.getElementById('playerHand');ph.innerHTML='';
+  playerHand.forEach((card,i)=>{
+    const div=createCardDiv(card,i);
+    if(canPlay(card))div.classList.add('playable');
+    div.onclick=()=>playCard(i);
+    ph.appendChild(div);
+  });
+
+  // AI hand
+  const ah=document.getElementById('aiHand');ah.innerHTML='';
+  for(let i=0;i<aiHand.length;i++){
+    const div=document.createElement('div');
+    div.className='card back';
+    div.innerHTML='🂠';
+    div.style.marginLeft=i>0?'-15px':'0';
+    ah.appendChild(div);
+  }
+
+  // Discard
+  const discardDiv=document.getElementById('discard');
+  if(discard.length>0)discardDiv.innerHTML='',discardDiv.appendChild(createCardDiv(discard[discard.length-1],-1));
+
+  // Info
+  document.getElementById('playerInfo').innerText=`Lu: ${playerHand.length} kartu`;
+  document.getElementById('aiInfo').innerText=`AI: ${aiHand.length} kartu`;
+  document.getElementById('deckCount').innerText=deck.length;
+  document.getElementById('currentColor').style.background=getColorHex(currentColor);
+  document.getElementById('turnIndicator').innerText=turn==='player'?'Giliran Lu':'Giliran AI';
+
+  // UNO check
+  if(playerHand.length===1&&!playerUno)document.getElementById('unoBtn').style.display='block';
+  else document.getElementById('unoBtn').style.display='none';
+
+  if(playerHand.length===1)document.getElementById('playerInfo').classList.add('uno');
+  else document.getElementById('playerInfo').classList.remove('uno');
+  if(aiHand.length===1)document.getElementById('aiInfo').classList.add('uno');
+  else document.getElementById('aiInfo').classList.remove('uno');
+
+  // Win check
+  if(playerHand.length===0)endGame('player');
+  if(aiHand.length===0)endGame('ai');
+}
+
+function createCardDiv(card,idx){
+  const div=document.createElement('div');
+  div.className=`card ${card.color}`;
+  let icon='',num=card.value;
+  if(card.value==='skip')icon='⊘',num='';
+  else if(card.value==='reverse')icon='⇄',num='';
+  else if(card.value==='+2')icon='+2',num='';
+  else if(card.value==='+4')icon='+4',num='';
+  else if(card.value==='wild')icon='🌈',num='';
+  div.innerHTML=`<div class="cardIcon tl">${icon||num}</div><div class="cardNum">${icon||num}</div><div class="cardIcon br">${icon||num}</div>`;
+  return div;
+}
+
+function canPlay(card){
+  if(card.color==='wild')return true;
+  if(card.color===currentColor)return true;
+  if(card.value===currentValue)return true;
+  return false;
+}
+
+function playCard(idx){
+  if(turn!=='player'||gameOver)return;
+  const card=playerHand[idx];
+  if(!canPlay(card)){sfx.click();showMsg('Gak bisa main kartu itu!');return}
+
+  sfx.play();playerHand.splice(idx,1);discard.push(card);
+  currentColor=card.color;currentValue=card.value;
+
+  if(playerHand.length===1)playerUno=false;
+
+  // Special cards
+  if(card.value==='skip'){turn='player';showMsg('AI Skip!')}
+  else if(card.value==='reverse'){direction*=-1;turn='player';showMsg('Reverse!')}
+  else if(card.value==='+2'){for(let i=0;i<2;i++)if(deck.length>0)aiHand.push(deck.pop());turn='player';showMsg('AI +2!');sfx.draw()}
+  else if(card.value==='+4'){pendingWild='+4';document.getElementById('colorPicker').style.display='block';return}
+  else if(card.value==='wild'){pendingWild='wild';document.getElementById('colorPicker').style.display='block';return}
+  else turn='ai';
+
+  updateUI();
+  if(turn==='ai'&&!gameOver)setTimeout(aiTurn,1000);
+}
+
+function chooseColor(color){
+  currentColor=color;sfx.click();
+  document.getElementById('colorPicker').style.display='none';
+  if(pendingWild==='+4'){for(let i=0;i<4;i++)if(deck.length>0)aiHand.push(deck.pop());showMsg(`AI +4! Warna ${color}`);sfx.draw()}
+  else showMsg(`Warna ${color}`);
+  pendingWild=false;turn='ai';updateUI();
+  if(!gameOver)setTimeout(aiTurn,1000);
+}
+
+function drawCard(){
+  if(turn!=='player'||gameOver)return;
+  if(deck.length===0){reshuffleDeck();return}
+  sfx.draw();playerHand.push(deck.pop());turn='ai';updateUI();
+  setTimeout(aiTurn,1000);
+}
+
+function callUNO(){
+  if(playerHand.length===1&&!playerUno){playerUno=true;sfx.uno();showMsg('UNO!');document.getElementById('unoBtn').style.display='none'}
+}
+
+function reshuffleDeck(){
+  if(discard.length<=1)return;
+  const top=discard.pop();
+  deck=discard;discard=[top];shuffle(deck);showMsg('Deck di-shuffle!');
+}
+
+// AI LOGIC - CERDAS
+function aiTurn(){
+  if(gameOver)return;
+  sfx.click();
+
+  // Cari kartu yang bisa dimainin
+  let playable=aiHand.map((c,i)=>({card:c,idx:i})).filter(x=>canPlay(x.card));
+
+  // Kalo ga ada, draw
+  if(playable.length===0){
+    if(deck.length===0)reshuffleDeck();
+    if(deck.length>0){aiHand.push(deck.pop());sfx.draw();showMsg('AI draw kartu')}
+    turn='player';updateUI();return;
+  }
+
+  // AI STRATEGY berdasarkan difficulty
+  let chosen;
+  if(difficulty==='easy'){
+    chosen=playable[Math.floor(Math.random()*playable.length)]; // Random
+  }
+  else if(difficulty==='normal'){
+    // Prioritas: +4 > +2 > skip/reverse > wild > angka
+    chosen=playable.sort((a,b)=>{
+      const score=x=>{
+        if(x.card.value==='+4')return 100;
+        if(x.card.value==='+2')return 90;
+        if(x.card.value==='skip'||x.card.value==='reverse')return 80;
+        if(x.card.value==='wild')return 70;
+        return 50;
+      };
+      return score(b)-score(a);
+    })[0];
+  }
+  else{ // hard
+    // Simpen wild/+4 kalo masih banyak kartu, pake di akhir
+    // Prioritas ganti warna ke warna yang paling banyak di tangan
+    const colorCount={red:0,blue:0,green:0,yellow:0};
+    aiHand.forEach(c=>{if(c.color!=='wild')colorCount[c.color]++});
+    const bestColor=Object.keys(colorCount).reduce((a,b)=>colorCount[a]>colorCount[b]?a:b);
+
+    chosen=playable.sort((a,b)=>{
+      const score=x=>{
+        if(x.card.value==='+4'&&aiHand.length>3)return 60; // Simpen dulu
+        if(x.card.value==='+4')return 100;
+        if(x.card.value==='+2')return 90;
+        if(x.card.value==='skip'||x.card.value==='reverse')return 85;
+        if(x.card.color===bestColor)return 80;
+        if(x.card.value==='wild'&&aiHand.length>3)return 50; // Simpen dulu
+        if(x.card.value==='wild')return 75;
+        return 60;
+      };
+      return score(b)-score(a);
+    })[0];
+  }
+
+  const card=chosen.card;aiHand.splice(chosen.idx,1);discard.push(card);
+  currentColor=card.color;currentValue=card.value;sfx.play();
+
+  if(aiHand.length===1&&!aiUno){aiUno=true;sfx.uno();showMsg('AI: UNO!')}
+
+  // Special cards
+  if(card.value==='skip'){turn='ai';showMsg('Lu Skip!');setTimeout(aiTurn,1000)}
+  else if(card.value==='reverse'){direction*=-1;turn='ai';showMsg('Reverse!');setTimeout(aiTurn,1000)}
+  else if(card.value==='+2'){for(let i=0;i<2;i++)if(deck.length>0)playerHand.push(deck.pop());turn='ai';showMsg('Lu +2!');sfx.draw();setTimeout(aiTurn,1000)}
+  else if(card.value==='+4'){
+    // AI pilih warna terbanyak
+    const colorCount={red:0,blue:0,green:0,yellow:0};
+    aiHand.forEach(c=>{if(c.color!=='wild')colorCount[c.color]++});
+    currentColor=Object.keys(colorCount).reduce((a,b)=>colorCount[a]>colorCount[b]?a:b);
+    for(let i=0;i<4;i++)if(deck.length>0)playerHand.push(deck.pop());
+    showMsg(`AI +4! Warna ${currentColor}`);sfx.draw();turn='ai';setTimeout(aiTurn,1000)
+  }
+  else if(card.value==='wild'){
+    const colorCount={red:0,blue:0,green:0,yellow:0};
+    aiHand.forEach(c=>{if(c.color!=='wild')colorCount[c.color]++});
+    currentColor=Object.keys(colorCount).reduce((a,b)=>colorCount[a]>colorCount[b]?a:b);
+    showMsg(`AI ganti ke ${currentColor}`);turn='ai';setTimeout(aiTurn,1000)
+  }
+  else turn='player';
+
+  updateUI();
+}
+
+function getColorHex(c){
+  return {red:'#ff5555',blue:'#5555ff',green:'#55aa55',yellow:'#ffaa00',wild:'#fff'}[c]||'#fff';
+}
+
+function showMsg(text){
+  const msg=document.getElementById('msg');
+  msg.innerText=text;msg.style.display='block';
+  setTimeout(()=>msg.style.display='none',1500);
+}
+
+function endGame(winner){
+  gameOver=true;
+  if(winner==='player'){wins++;sfx.win();showMsg('🎉 LU MENANG! 🎉')}
+  else{losses++;showMsg('💀 LU KALAH 💀')}
+  document.getElementById('wins').innerText=wins;
+  document.getElementById('losses').innerText=losses;
+  setTimeout(()=>{document.getElementById('startScreen').style.display='flex'},2000);
+}
+</script>
+
+</body>
+</html>

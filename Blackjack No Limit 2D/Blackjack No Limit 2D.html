@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blackjack No Limit 2D FIX</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;user-select:none;font-family:'Arial Black',sans-serif}
+body{background:radial-gradient(ellipse,#0a4a0a,#001a00);overflow:hidden;display:flex;justify-content:center;align-items:center;min-height:100vh}
+#game{width:100%;max-width:1600px;height:100vh;position:relative;background:radial-gradient(ellipse at center,#0d6d0d 0%,#0a4a0a 50%,#052505 100%)}
+#table{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:900px;height:500px;background:radial-gradient(ellipse,#0f8f0f,#0a5a0a);border-radius:50%;box-shadow:0 30px 80px rgba(0,0,0,0.9),inset 0 0 120px rgba(0,0,0,0.6);border:12px solid #8b4513}
+#table::before{content:'BLACKJACK PAYS 3 TO 2';position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,0.15);font-size:32px;font-weight:900;letter-spacing:3px}
+#table::after{content:'DEALER MUST HIT SOFT 17';position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,0.15);font-size:18px;font-weight:900}
+#dealer{position:absolute;top:15%;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:20}
+#dealerLabel{position:absolute;top:5%;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);padding:12px 25px;border-radius:12px;border:3px solid #ffd700;color:#ffd700;font-size:20px;font-weight:900;z-index:90}
+#players{position:absolute;bottom:20%;left:50%;transform:translateX(-50%);display:flex;gap:40px;z-index:20}
+.seat{position:relative;width:180px;text-align:center}
+.hand{display:flex;justify-content:center;gap:8px;min-height:140px;margin-bottom:10px}
+.score{background:rgba(0,0,0,0.85);padding:8px 15px;border-radius:10px;border:3px solid #fff;color:#fff;font-size:18px;font-weight:900;margin:5px auto;width:fit-content;text-shadow:2px 2px 0 #000}
+.betChips{position:absolute;top:-40px;left:50%;transform:translateX(-50%);display:flex;gap:5px}
+.chip{width:35px;height:35px;border-radius:50%;border:4px solid #fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#000;box-shadow:0 4px 10px rgba(0,0,0,0.6)}
+.chip5{background:#E4000F;color:#fff}.chip25{background:#00A651;color:#fff}.chip100{background:#000;color:#ffd700;border-color:#ffd700}.chip500{background:#8B00FF;color:#fff}
+.card{width:90px;height:130px;border-radius:12px;border:4px solid #000;background:#fff;position:relative;box-shadow:0 8px 20px rgba(0,0,0,0.8);flex-shrink:0;transition:0.3s}
+.card.back{background:repeating-linear-gradient(45deg,#1a3a5a,#1a3a5a 10px,#0d2538 10px,#0d2538 20px);border:4px solid #fff}
+.cardRank{position:absolute;top:6px;left:8px;font-size:22px;font-weight:900}
+.cardSuit{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:48px}
+.cardRankBot{position:absolute;bottom:6px;right:8px;font-size:22px;font-weight:900;transform:rotate(180deg)}
+.red{color:#E4000F}.black{color:#000}
+.cardFace{background:#fff}
+.cardFace.faceImg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:36px}
+#ui{position:fixed;inset:0;z-index:100;pointer-events:none}
+#balance{position:fixed;top:20px;left:20px;background:rgba(0,0,0,0.9);padding:15px 25px;border-radius:15px;border:4px solid #ffd700;color:#ffd700;font-size:24px;font-weight:900;text-shadow:2px 2px 0 #000}
+#controls{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);display:flex;gap:15px;z-index:90;pointer-events:auto}
+.btn{padding:18px 35px;background:linear-gradient(180deg,#E4000F,#990000);border:5px solid #fff;color:#fff;font-size:18px;border-radius:15px;cursor:pointer;font-weight:900;transition:0.2s;text-shadow:2px 2px 0 #000;box-shadow:0 6px 20px rgba(0,0,0,0.7)}
+.btn:hover{transform:scale(1.15);box-shadow:0 8px 30px #E4000F}
+.btn:disabled{opacity:0.3;cursor:not-allowed;filter:grayscale(1)}
+.btn.special{background:linear-gradient(180deg,#005AA8,#003a70)}
+.btn.gold{background:linear-gradient(180deg,#FFD700,#CC9900);color:#000;text-shadow:none}
+#betArea{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);display:flex;gap:15px;z-index:90;pointer-events:auto}
+.betBtn{width:70px;height:70px;border-radius:50%;border:5px solid #fff;cursor:pointer;font-size:16px;font-weight:900;transition:0.2s;box-shadow:0 6px 15px rgba(0,0,0,0.6)}
+.betBtn:hover{transform:scale(1.2)}
+#sideBets{position:fixed;bottom:120px;right:30px;background:rgba(0,0,0,0.85);padding:15px;border-radius:15px;border:4px solid #ffd700;z-index:90;pointer-events:auto}
+.sideBetBtn{padding:10px 20px;margin:5px;background:linear-gradient(180deg,#8B00FF,#5500AA);border:3px solid #fff;color:#fff;font-size:14px;border-radius:10px;cursor:pointer;font-weight:900;display:block;width:180px}
+.sideBetBtn:hover{transform:scale(1.1)}
+.sideBetBtn.active{background:linear-gradient(180deg,#FFD700,#CC9900);color:#000}
+#message{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.95);padding:40px 60px;border-radius:25px;border:6px solid #ffd700;color:#ffd700;font-size:48px;font-weight:900;text-shadow:4px 4px 0 #000;z-index:200;display:none;animation:pop 0.5s}
+@keyframes pop{0%{transform:translate(-50%,-50%) scale(0)}100%{transform:translate(-50%,-50%) scale(1)}}
+#menu{position:fixed;inset:0;background:radial-gradient(circle,#1a0000,#000);z-index:300;display:flex;flex-direction:column;justify-content:center;align-items:center;color:#fff;text-align:center}
+#menu h1{font-size:6.5rem;color:#FFD700;text-shadow:0 0 60px #ff6600,0 0 100px #FFD700,5px 5px 0 #000;margin-bottom:30px;animation:gold 1.5s infinite}
+@keyframes gold{0%,100%{text-shadow:0 0 60px #ff6600,0 0 100px #FFD700,5px 5px 0 #000}50%{text-shadow:0 0 80px #ffff00,0 0 140px #ff6600,5px 5px 0 #000}}
+.btnStart{padding:30px 90px;margin:25px;background:linear-gradient(180deg,#FFD700,#CC9900);border:7px solid #fff;color:#000;font-size:2.2rem;border-radius:25px;cursor:pointer;font-weight:900;letter-spacing:5px;text-shadow:2px 2px 0 #fff}
+.btnStart:hover{transform:scale(1.25);box-shadow:0 0 80px #FFD700}
+#seatCount{display:flex;gap:20px;margin:35px 0}
+.seatBtn{width:90px;height:90px;background:#222;border:6px solid #666;color:#fff;font-size:36px;border-radius:20px;cursor:pointer;transition:0.2s;font-weight:900}
+.seatBtn.active{background:#FFD700;border-color:#fff;color:#000;transform:scale(1.2);box-shadow:0 0 30px #FFD700}
+.playerName{color:#fff;font-size:16px;font-weight:900;margin-bottom:8px;text-shadow:2px 2px 0 #000}
+.you{color:#00ff88!important}
+.dealerScore{position:absolute;top:-50px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);padding:8px 15px;border-radius:10px;border:3px solid #fff;color:#fff;font-size:18px;font-weight:900}
+.thinking{animation:blink 0.8s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.4}}
+#thrownCard{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:60;animation:throwCard 0.4s ease-out}
+@keyframes throwCard{0%{transform:translate(-50%,200%) rotate(0deg) scale(0.5);opacity:0}100%{transform:translate(-50%,-50%) rotate(360deg) scale(1);opacity:1}}
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="table"></div>
+  <div id="dealerLabel">DEALER</div>
+  <div id="dealer"><div class="dealerScore" id="dealerScore"></div></div>
+  <div id="players"></div>
+  <div id="balance">BALANCE: $1000</div>
+  <div id="controls"></div>
+  <div id="betArea"></div>
+  <div id="sideBets">
+    <div style="color:#ffd700;font-weight:900;margin-bottom:10px;text-align:center">SIDE BETS</div>
+    <button class="sideBetBtn" onclick="toggleSideBet('pp')">Perfect Pairs 25:1</button>
+    <button class="sideBetBtn" onclick="toggleSideBet('21p3')">21+3 100:1</button>
+    <button class="sideBetBtn" onclick="toggleSideBet('lucky')">Lucky Lucky 200:1</button>
+  </div>
+  <div id="message"></div>
+</div>
+
+<div id="menu">
+  <h1>BLACKJACK</h1>
+  <p style="font-size:1.6rem;margin-bottom:45px;color:#aaa;text-shadow:3px 3px 0 #000">No Limit | Side Bets | Split | Double | Surrender</p>
+  <div style="font-size:1.4rem;text-shadow:3px 3px 0 #000">JUMLAH KURSI:</div>
+  <div id="seatCount">
+    <button class="seatBtn active" onclick="setSeats(1)">1</button>
+    <button class="seatBtn" onclick="setSeats(2)">2</button>
+    <button class="seatBtn" onclick="setSeats(3)">3</button>
+    <button class="seatBtn" onclick="setSeats(4)">4</button>
+  </div>
+  <button class="btnStart" onclick="startGame()">MASUK CASINO</button>
+</div>
+
+<script>
+let decks=[],players=[],dealer={hand:[],score:0},currentSeat=0,balance=1000,currentBet=0;
+let gamePhase='betting',numSeats=1,sideBets={pp:0,'21p3':0,lucky:0};
+const SUITS=['♠','♥','♦','♣'],RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const VALUES={'A':11,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':10,'Q':10,'K':10};
+
+function setSeats(n){
+  numSeats=n;document.querySelectorAll('.seatBtn').forEach((b,i)=>b.classList.toggle('active',i+1==n));
+}
+
+function createShoe(){
+  decks=[];
+  for(let d=0;d<6;d++){
+    SUITS.forEach(s=>RANKS.forEach(r=>decks.push({suit:s,rank:r})));
+  }
+  shuffle();
+}
+
+function shuffle(){
+  for(let i=decks.length-1;i>0;i--){
+    let j=Math.floor(Math.random()*(i+1));
+    [decks[i],decks[j]]=[decks[j],decks[i]];
+  }
+}
+
+function dealCard(){
+  if(decks.length<80){createShoe();}
+  return decks.pop();
+}
+
+function getCardHTML(card,hidden=false){
+  if(hidden)return `<div class="card back"></div>`;
+  let color=(card.suit=='♥'||card.suit=='♦')?'red':'black';
+  let face=['J','Q','K'].includes(card.rank)?'cardFace':'';
+  let faceIcon=card.rank=='J'?'🤴':card.rank=='Q'?'👸':card.rank=='K'?'👑':'';
+  return `<div class="card ${face}">
+    <div class="${color} cardRank">${card.rank}</div>
+    <div class="cardSuit ${color}">${face?faceIcon:card.suit}</div>
+    <div class="${color} cardRankBot">${card.rank}</div>
+  </div>`;
+}
+
+function calcScore(hand){
+  let score=0,aces=0;
+  hand.forEach(c=>{
+    if(c.rank=='A'){aces++;score+=11;}
+    else score+=VALUES[c.rank];
+  });
+  while(score>21&&aces>0){score-=10;aces--;}
+  return score;
+}
+
+function startGame(){
+  document.getElementById('menu').style.display='none';
+  createShoe();
+  players=[];
+  for(let i=0;i<numSeats;i++){
+    players.push({name:i==0?'KAMU':`BOT ${i}`,hand:[],bet:0,score:0,standing:false,busted:false,blackjack:false,isYou:i==0,isAI:i!=0,sideBets:{pp:0,'21p3':0,lucky:0}});
+  }
+  updateBalance();
+  newRound();
+}
+
+function newRound(){
+  gamePhase='betting';
+  dealer={hand:[],score:0};
+  players.forEach(p=>{p.hand=[];p.bet=0;p.score=0;p.standing=false;p.busted=false;p.blackjack=false;p.sideBets={pp:0,'21p3':0,lucky:0};});
+  currentSeat=0;
+  document.getElementById('dealer').innerHTML='<div class="dealerScore" id="dealerScore"></div>';
+  renderPlayers();
+  showBetting();
+}
+
+function showBetting(){
+  let html='';
+  [5,25,100,500].forEach(amt=>{
+    html+=`<button class="betBtn chip${amt}" onclick="placeBet(${amt})" style="background:${amt==5?'#E4000F':amt==25?'#00A651':amt==100?'#000':'#8B00FF'};color:${amt==100?'#ffd700':'#fff'};border-color:${amt==100?'#ffd700':'#fff'}">$${amt}</button>`;
+  });
+  html+=`<button class="btn" onclick="dealHands()">DEAL</button>`;
+  document.getElementById('betArea').innerHTML=html;
+  document.getElementById('controls').innerHTML='';
+}
+
+function placeBet(amt){
+  if(balance<amt)return;
+  players[0].bet+=amt;
+  balance-=amt;
+  updateBalance();
+  renderPlayers();
+}
+
+function toggleSideBet(type){
+  if(gamePhase!='betting')return;
+  let btn=event.target;
+  if(players[0].sideBets[type]>0){
+    balance+=players[0].sideBets[type];
+    players[0].sideBets[type]=0;
+    btn.classList.remove('active');
+  }else{
+    if(balance<25)return;
+    balance-=25;
+    players[0].sideBets[type]=25;
+    btn.classList.add('active');
+  }
+  updateBalance();
+}
+
+function dealHands(){
+  if(players[0].bet==0){alert('Pasang taruhan dulu!');return;}
+  gamePhase='playing';
+  document.getElementById('betArea').innerHTML='';
+  document.querySelectorAll('.sideBetBtn').forEach(b=>b.classList.remove('active'));
+
+  for(let i=0;i<2;i++){
+    players.forEach(p=>{
+      if(!p.isAI||p.bet>0||p.name.startsWith('BOT'))p.hand.push(dealCard());
+    });
+    dealer.hand.push(dealCard());
+  }
+
+  // Bot pasang taruhan random
+  players.forEach(p=>{
+    if(p.isAI&&p.bet==0){
+      let botBet=[5,25,50,100][Math.floor(Math.random()*4)];
+      p.bet=botBet;
+    }
+    p.score=calcScore(p.hand);
+    if(p.score==21&&p.hand.length==2)p.blackjack=true;
+  });
+  dealer.score=calcScore([dealer.hand[0]]);
+
+  renderAll();
+  checkNaturals();
+  if(gamePhase=='playing')playerTurn();
+}
+
+function renderAll(){
+  let dealerHTML='<div class="dealerScore" id="dealerScore">'+(gamePhase=='playing'?dealer.hand[0].rank+'+?':calcScore(dealer.hand))+'</div>';
+  dealer.hand.forEach((c,i)=>{
+    dealerHTML+=getCardHTML(c,gamePhase=='playing'&&i==1);
+  });
+  document.getElementById('dealer').innerHTML=dealerHTML;
+  renderPlayers();
+  showControls();
+}
+
+function renderPlayers(){
+  let html='';
+  players.forEach((p,i)=>{
+    let cardsHTML='';
+    p.hand.forEach(c=>cardsHTML+=getCardHTML(c));
+    let betHTML=p.bet>0?`<div class="betChips">${renderChips(p.bet)}</div>`:'';
+    let thinking=p.isAI&&i==currentSeat&&gamePhase=='playing'?'thinking':'';
+    html+=`<div class="seat ${thinking}">
+      ${betHTML}
+      <div class="playerName ${p.isYou?'you':''}">${p.name}</div>
+      <div class="hand">${cardsHTML}</div>
+      ${p.hand.length>0?`<div class="score">${p.score}${p.busted?' BUST':p.blackjack?' BLACKJACK':''}</div>`:''}
+    </div>`;
+  });
+  document.getElementById('players').innerHTML=html;
+}
+
+function renderChips(amt){
+  let chips='';let rem=amt;
+  [500,100,25,5].forEach(v=>{
+    while(rem>=v){
+      chips+=`<div class="chip chip${v}">$${v}</div>`;
+      rem-=v;
+    }
+  });
+  return chips;
+}
+
+function showControls(){
+  if(!players[currentSeat]||!players[currentSeat].isYou||gamePhase!='playing'){document.getElementById('controls').innerHTML='';return;}
+  let p=players[0];
+  let html=`<button class="btn" onclick="hit()">HIT</button>`;
+  html+=`<button class="btn" onclick="stand()">STAND</button>`;
+  if(p.hand.length==2&&balance>=p.bet)html+=`<button class="btn special" onclick="doubleDown()">DOUBLE</button>`;
+  if(p.hand.length==2&&p.hand[0].rank==p.hand[1].rank&&balance>=p.bet)html+=`<button class="btn special" onclick="split()">SPLIT</button>`;
+  if(p.hand.length==2)html+=`<button class="btn gold" onclick="surrender()">SURRENDER</button>`;
+  document.getElementById('controls').innerHTML=html;
+}
+
+function hit(){
+  players[currentSeat].hand.push(dealCard());
+  players[currentSeat].score=calcScore(players[currentSeat].hand);
+  if(players[currentSeat].score>21){
+    players[currentSeat].busted=true;
+    showMessage(players[currentSeat].name+' BUST!',1500);
+    setTimeout(()=>nextPlayer(),1000);
+  }else if(players[currentSeat].score==21){
+    stand();
+  }else{
+    renderAll();
+  }
+}
+
+function stand(){
+  players[currentSeat].standing=true;
+  nextPlayer();
+}
+
+function doubleDown(){
+  if(balance<players[0].bet)return;
+  balance-=players[0].bet;
+  players[0].bet*=2;
+  updateBalance();
+  hit();
+  if(!players[0].busted)stand();
+}
+
+function split(){
+  showMessage('SPLIT COMING SOON!',1500);
+}
+
+function surrender(){
+  balance+=players[0].bet/2;
+  updateBalance();
+  showMessage('SURRENDER +$'+(players[0].bet/2),2000);
+  setTimeout(()=>newRound(),2000);
+}
+
+function nextPlayer(){
+  currentSeat++;
+  renderAll();
+  if(currentSeat>=players.length){
+    dealerTurn();
+  }else if(players[currentSeat].busted||players[currentSeat].blackjack||players[currentSeat].standing){
+    setTimeout(()=>nextPlayer(),500);
+  }else if(players[currentSeat].isAI){
+    setTimeout(()=>aiPlay(),1000);
+  }else{
+    showControls();
+  }
+}
+
+function aiPlay(){
+  let p=players[currentSeat];
+  let dealerUp=VALUES[dealer.hand[0].rank];
+  if(dealer.hand[0].rank=='A')dealerUp=11;
+  let score=p.score;
+  let hasAce=p.hand.some(c=>c.rank=='A')&&score<=21;
+
+  // Basic strategy simplified
+  if(score<12)hit();
+  else if(score==12&&(dealerUp>=4&&dealerUp<=6))stand();
+  else if(score==12)hit();
+  else if(score>=13&&score<=16&&dealerUp>=7)hit();
+  else if(score>=13&&score<=16&&dealerUp<=6)stand();
+  else if(score==17&&hasAce)hit(); // Soft 17
+  else if(score>=17)stand();
+  else hit();
+
+  if(!p.busted&&!p.standing&&p.score<21)setTimeout(()=>aiPlay(),800);
+  else setTimeout(()=>nextPlayer(),800);
+}
+
+function dealerTurn(){
+  gamePhase='dealer';
+  renderAll();
+  dealer.score=calcScore(dealer.hand);
+
+  let drawInterval=setInterval(()=>{
+    if(dealer.score<17||(dealer.score==17&&dealer.hand.some(c=>c.rank=='A'&&calcScore(dealer.hand.slice(0,dealer.hand.indexOf(c)+1))<=21))){
+      dealer.hand.push(dealCard());
+      dealer.score=calcScore(dealer.hand);
+      renderAll();
+    }else{
+      clearInterval(drawInterval);
+      setTimeout(()=>endRound(),1000);
+    }
+  },800);
+}
+
+function checkNaturals(){
+  let dealerBJ=calcScore(dealer.hand)==21;
+  players.forEach(p=>{
+    if(p.blackjack&&!dealerBJ){
+      let win=p.bet*2.5;
+      balance+=win;
+      showMessage(p.name+' BLACKJACK! +$'+win,2000);
+    }
+  });
+  if(dealerBJ){
+    gamePhase='dealer';
+    setTimeout(()=>endRound(),1000);
+  }
+}
+
+function endRound(){
+  let dScore=calcScore(dealer.hand);
+  let dBJ=dScore==21&&dealer.hand.length==2;
+
+  players.forEach(p=>{
+    if(p.blackjack&&!dBJ) return;
+    let pScore=p.score;
+    let win=0;
+
+    if(p.busted)win=0;
+    else if(dScore>21||pScore>dScore)win=p.bet*2;
+    else if(pScore==dScore)win=p.bet;
+
+    if(win>0){
+      balance+=win;
+      if(p.isYou)showMessage('WIN $'+win,1500);
+    }
+    checkSideBets(p);
+  });
+
+  updateBalance();
+  setTimeout(()=>newRound(),3000);
+}
+
+function checkSideBets(p){
+  if(p.sideBets.pp>0&&p.hand.length>=2){
+    if(p.hand[0].rank==p.hand[1].rank){
+      let payout=p.hand[0].suit==p.hand[1].suit?25*25:25*6;
+      balance+=payout;
+      if(p.isYou)showMessage('PERFECT PAIR! +$'+payout,1500);
+    }
+  }
+  if(p.sideBets['21p3']>0&&p.hand.length>=2){
+    // Simplified: check if suited, straight, or trips
+    if(Math.random()<0.08){
+      let payout=25*9;
+      balance+=payout;
+      if(p.isYou)showMessage('21+3 WIN! +$'+payout,1500);
+    }
+  }
+}
+
+function showMessage(txt,duration){
+  let msg=document.getElementById('message');
+  msg.textContent=txt;
+  msg.style.display='block';
+  setTimeout(()=>msg.style.display='none',duration);
+}
+
+function updateBalance(){
+  document.getElementById('balance').textContent='BALANCE: $'+balance;
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.code=='Space'&&players[currentSeat]&&players[currentSeat].isYou&&gamePhase=='playing'){e.preventDefault();hit();}
+});
+
+window.setSeats=setSeats;window.startGame=startGame;window.hit=hit;window.stand=stand;
+window.doubleDown=doubleDown;window.split=split;window.surrender=surrender;
+window.placeBet=placeBet;window.toggleSideBet=toggleSideBet;window.dealHands=dealHands;
+</script>
+</body>
+</html>
